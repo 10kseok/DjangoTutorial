@@ -1,33 +1,38 @@
-from django.http import Http404, HttpResponse
-from django.shortcuts import render
-from .models import Question
+from django.http import Http404, HttpResponse, HttpResponseRedirect
+from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
+from .models import Choice, Question
 from django.template import loader
+from django.views import generic
 
 # Create your views here.
-def index(request):
-    latest_question_list = Question.objects.order_by('-pub_date')[:5]
-    # template = loader.get_template('polls/index.html')
-    # # context는 템플릿에서 쓰이는 변수명과 Python 객체를 연결하는 사전형 값
-    # context = {
-    #     'latest_question_list': latest_question_list,
-    # }
+class IndexView(generic.ListView):
+    template_name = 'polls/index.html'
+    context_object_name = 'latest_question_list'
 
-    # 위 방법에서 단축된 형태
-    context = {
-        'latest_question_list': latest_question_list,
-    }
-    return render(request, 'polls/index.html', context) # context는 optional
+    def get_queryset(self):
+        return Question.objects.order_by('-pub_date')[:5]
 
-def detail(request, question_id):
-    try:
-        question = Question.objects.get(pk=question_id)
-    except Question.DoesNotExist:
-        raise Http404("Question does not exist")
-    return render(request, 'polls/detail.html', {'question':question})
+class DetailView(generic.DetailView):
+    model = Question
+    template_name: str = 'polls/detail.html'
 
-def results(request, question_id):
-    response = f"You're looking at the results of question {question_id}"
-    return HttpResponse(response)
+class ResultsView(generic.DetailView):
+    model = Question
+    template_name: str = 'polls/results.html'
 
 def vote(request, question_id):
-    return HttpResponse(f"You're voting on question {question_id}")
+    question = get_object_or_404(Question, pk=question_id)
+    try:
+        selected_choice = question.choice_set.get(pk=request.POST['choice'])
+    except (KeyError, Choice.DoesNotExist):
+        return render(request, 'polls/detail.html', {
+            'question': question,
+            'error_message': "You didn't select a choice.",
+        })
+    else:
+        #POST 데이터를 성공적으로 처리 한 후 HttpResponseRedirect를 반환 (좋은 웹 개발 관행)
+        selected_choice.votes += 1
+        selected_choice.save()
+
+        return HttpResponseRedirect(reverse('polls:results', args=(question_id,)))

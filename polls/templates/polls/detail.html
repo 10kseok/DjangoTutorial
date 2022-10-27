@@ -1,10 +1,24 @@
 <!DOCTYPE html>
 <html>
     <body>
-    <h1>{{ question.question_text }}</h1>
-    <ul>
-    {% for choice in question.choice_set.all %}
-        <li>{{ choice.choice_text }}</li>
-    {% endfor %}
+    {% comment %} 데이터 서버측을 변경하는 양식을 만들 때마다 ``method=”post”``를 사용 {% endcomment %}
+    <form action="{% url 'polls:vote' question.id %}" method="post">
+        {% comment %} 내부 URL을 대상으로 하는 모든 POST 양식은 {% csrf_token %} 템플릿 태그를 사용 {% endcomment %}
+        {% csrf_token %}
+        <fieldset>
+            <legend><h1>{{ question.question_text }}</h1></legend>
+            {% if error_message %}
+                <p><strong>{{error_message}}</strong></p>
+            {% endif %}
+
+            {% for choice in question.choice_set.all  %}
+                <input type="radio" name="choice" id="choice{{ forloop.counter }}"
+                value="{{choice.id}}">
+                <label for="choice{{ forloop.counter }}">{{ choice.choice_text }}</label>
+                <br>
+            {% endfor %}
+        </fieldset>
+        <input type="submit" value="Vote">
+    </form>
     </body>
 </html>
